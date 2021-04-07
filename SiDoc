@@ -1,0 +1,306 @@
+#!/usr/bin/python3
+
+#   _____ _ _____                
+#  / ____(_)  __ \               
+# | (___  _| |  | | ___   ___    
+#  \___ \| | |  | |/ _ \ / __|   
+#  ____) | | |__| | (_) | (__    
+# |_____/|_|_____/ \___/ \___|   
+#       Simulation documentation
+#                    chi86
+
+__title__   = 'Simulation documentation tool'
+__version__ = '0.1'
+__author__  = 'christoph irrenfried'
+__license__ = 'none'
+
+# prepare environment
+import datetime,os,copy
+import textwrap
+import subprocess
+import pickle
+
+
+
+### Set environment variables
+prefix=""
+PDFviewer="evince "
+Editor="emacs "
+Reader="less "
+
+### repr(
+### entry=next(filter(lambda obj: obj.get('doi'), self.BibContent), None)
+
+#======== Fancy terminal print ==================
+
+color=["black","red","green","blue","pink","yellow","peru"]
+
+class Texti:
+   PURPLE = '\033[95m'
+   CYAN = '\033[96m'
+   DARKCYAN = '\033[36m'
+   BLUE = '\033[94m'
+   GREEN = '\033[92m'
+   YELLOW = '\033[93m'
+   RED = '\033[91m'
+   BOLD = '\033[1m'
+   UNDERLINE = '\033[4m'
+   END = '\033[0m'
+
+#================================================
+
+            
+#===== Main routine definition ==================
+def main():
+
+   # database,msg=ReadDatabase(prefix)
+   # cli(database,msg,prefix)
+
+   docu=SimDocu()
+   # docu.listEntries()
+   #docu.addEntries("init")
+   # docu.listEntries()
+   # docu.modEntries(0)
+
+   cli(docu)
+
+
+class SimDocu:
+   """
+   class holding various documentation items
+   """
+   def __init__(self):
+      self.path="docu/SimDocu"
+      self.N=0
+      
+      # timestamp of database
+      self.ts=""
+      
+      self.data=[]
+      
+      self.readData()
+      print("Database init: ",self.ts.strftime("%d/%m/%Y, %H:%M:%S"),"\n")
+      
+   def readData(self):
+      if not os.path.exists("docu/"):
+         raise NameError('no docu directory')
+      
+      
+      # info file
+      try:
+         fileH=open(prefix+self.path+".info","r")
+         self.ts=datetime.datetime.fromtimestamp(float(fileH.readline()))
+         fileH.close()
+      except:
+         fileH=open(prefix+self.path+".info","w")
+         self.ts = datetime.datetime.now()
+         fileH.write(str(self.ts))
+         fileH.close()
+         # data file
+         try:
+            with open(prefix+self.path+".dat","rb") as f:
+               self.data = pickle.load(f)
+         except:
+            self.data = []
+            
+   def safeData(self):
+      with open(prefix+self.path+".dat","wb") as f:
+         pickle.dump(self.data,f)
+            
+   def listEntries(self):
+      idx=-1
+      for idx,entry in enumerate(self.data):
+         print("{:4d}. {:20}".format(idx,entry.name))
+      if(idx==-1):
+         print("No ducumentation yet!")
+            
+   def addEntries(self,name):
+      dat=SimDocuEntry(name)
+      self.data.append(dat)
+      self.safeData()
+            
+   def modEntries(self,num):
+      dat=self.data[num]
+      dat.mod()
+            
+   def readEntries(self,num):
+      dat=self.data[num]
+      dat.read()
+            
+   def showEntries(self,num):
+      dat=self.data[num]
+      dat.mod()
+
+class SimDocuEntry:
+    """
+    class holding a documentation items
+    """
+    def __init__(self,name):
+        self.id=name.replace(" ", "_")
+        self.name=name
+        self.file="docu/"+self.name.replace(" ", "_")+".md"
+
+        if not os.path.exists(self.file):
+            open(self.file, "w+").close()
+
+        subprocess.Popen([Editor+self.file],shell=True)
+        
+    def mod(self):
+        subprocess.Popen([Editor+self.file],shell=True)
+        
+    def read(self):
+        # p=subprocess.Popen([Reader+self.file],shell=True)
+        p=subprocess.Popen(['pandoc -s -f markdown -t man "'+self.file+'" | man -l -'],shell=True)
+        p.communicate() #now wait plus that you can send commands to process
+        
+    def show(self):
+        print("id: ",self.id)
+
+
+
+#===== cli ==================
+def cli(database):
+    # command line interface
+
+    arguments={"database":database,
+               "number":-1
+               }
+
+
+
+    menuItems = [
+        { "E(x)it": CLI_Exit },
+        { "List all entries": CLI_ListEntries },
+        { "Add entry": CLI_AddEntries},
+        { "Read entry": CLI_ReadEntries},
+        { "Modify entry": CLI_ModEntries}
+    ]
+    
+    while True:
+        os.system('clear')
+        
+        Logo()
+
+        ## list all entries
+        database.listEntries()
+        print()
+      
+        for item in menuItems:
+            print("[" + str(menuItems.index(item)) + "] "+ list(item.keys())[0])
+
+        choice = input("# or (r/m)# >> ")
+        try:
+            if len(choice) > 1:
+                if choice[0] == "r":
+                    arguments["number"]=int(choice[1:])
+                    choice=3
+                elif choice[0] == "m":
+                    arguments["number"]=int(choice[1:])
+                    choice=4
+            if choice == 'x': choice=0
+            if int(choice) < 0 : raise ValueError
+            list(menuItems[int(choice)].values())[0](arguments)
+        except (ValueError, IndexError):
+            pass
+
+
+    
+#===== Utility functions for cli ==================
+def Logo():
+   """
+   Routine for plotting the logo
+   """    
+   # print(Texti.GREEN+"Simulation documentation"+Texti.END)
+   # print(Texti.GREEN+"========================"+Texti.END)
+
+
+   print(Texti.GREEN+"   _____ _ _____                "+Texti.END)
+   print(Texti.GREEN+"  / ____(_)  __ \               "+Texti.END)
+   print(Texti.GREEN+" | (___  _| |  | | ___   ___    "+Texti.END)
+   print(Texti.GREEN+"  \___ \| | |  | |/ _ \ / __|   "+Texti.END)
+   print(Texti.GREEN+"  ____) | | |__| | (_) | (__    "+Texti.END)
+   print(Texti.GREEN+" |_____/|_|_____/ \___/ \___|   "+Texti.END)
+   print("       "+Texti.GREEN+"Si"+Texti.END+"mulation "+Texti.GREEN+"doc"+Texti.END+"umentation")
+   print("                    "+Texti.GREEN+"chi86"+Texti.END)
+   print()
+                             
+                             
+
+
+def CLI_ListEntries(arguments):
+   """
+   CLI entry **ListEntries --- All**
+   """
+   database=arguments["database"]
+
+   database.listEntries()
+   
+   print('number / X')
+   choiceDat = input(">> ")
+
+   if( int(choiceDat) >= 0 ):
+       database.showEntries(int(choiceDat))
+
+   
+def CLI_AddEntries(arguments):
+   """
+   CLI entry **AddEntries --- One**
+   """
+   database=arguments["database"]
+   name = input("Name >> ")
+   
+   if name!= "":
+       database.addEntries(name)
+   
+
+def CLI_ReadEntries(arguments):
+   """
+   CLI entry **ListEntries --- All**
+   """
+   database=arguments["database"]
+
+   database.listEntries()
+
+   if arguments["number"] == -1:
+       print('number / X')
+       choiceDat = int(input(">> "))
+   else:
+       choiceDat=arguments["number"]
+
+   if( choiceDat >= 0 ):
+       database.readEntries(choiceDat)
+   
+
+def CLI_ModEntries(arguments):
+   """
+   CLI entry **ListEntries --- All**
+   """
+   database=arguments["database"]
+
+   database.listEntries()
+
+   if arguments["number"] == -1:
+       print('number / X')
+       choiceDat = int(input(">> "))
+   else:
+       choiceDat=arguments["number"]
+
+   if( choiceDat >= 0 ):
+       database.modEntries(choiceDat)
+
+def CLI_Exit(arguments):
+   """
+   CLI entry **Exit**
+   """
+   exit()
+
+   
+
+#===== execute MAIN ==================
+if __name__ == '__main__':
+   #===== Main routine execute =============
+   #start = time.time()
+   main()
+   #end = time.time()
+   #print('\n\nTime:',end - start,'sec')
+   #========================================
